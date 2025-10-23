@@ -4,7 +4,7 @@
 
 ### 1. Doctor Registration System ✅
 
-**Location:** http://127.0.0.1:8000/doctors/register/
+**Location:** http://127.0.0.1:8000/doctors/register/ [change according to url]
 
 **Features:**
 - Self-registration form for new doctors
