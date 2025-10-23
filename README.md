@@ -1,178 +1,203 @@
-# SmartQueue - Medical Token Management System
+# SmartQueue – Medical Token Management System
 
-A comprehensive Django-based medical queue management system that provides real-time token tracking, SMS/WhatsApp notifications, and multi-role dashboards for patients, doctors, and administrators.
+A powerful **Django-based queue management platform** designed to streamline patient flow in hospitals and clinics. SmartQueue offers **real-time token tracking**, **SMS/WhatsApp notifications**, and **dedicated dashboards** for patients, doctors, and administrators.
 
-## Features
+---
+
+## 🚀 Key Features
 
 ### 🏥 Core Functionality
-- **Automatic Token Assignment**: Sequential token numbers per department per day
-- **Real-time Queue Updates**: WebSocket-based live updates
-- **Multi-department Support**: Manage multiple hospital departments
-- **Priority Queue Management**: Support for normal, high, and emergency priorities
-- **SMS/WhatsApp Notifications**: Twilio integration for patient alerts
+
+* **Automatic Token Generation** – Sequential tokens per department, reset daily
+* **Live Queue Tracking** – Real-time WebSocket-based updates
+* **Multi-Department Management** – Configure multiple hospital departments
+* **Priority Queuing** – Handles normal, high, and emergency priorities
+* **Smart Notifications** – Twilio integration for SMS/WhatsApp alerts
 
 ### 👨‍⚕️ Doctor Dashboard
-- View waiting patients in real-time
-- Call next patient in queue
-- Start and complete consultations
-- Track daily patient statistics
-- Manage availability status
+
+* Monitor patient queues in real-time
+* Call the next patient instantly
+* Start and end consultations
+* View daily consultation statistics
+* Manage availability status
 
 ### 👨‍💼 Admin Panel
-- Department management
-- Doctor management
-- Live queue monitoring
-- Analytics and reports
-- Notification management
-- System configuration
 
-### 👤 Patient Interface
-- Online registration
-- Real-time status tracking
-- Queue position updates
-- Estimated wait times
-- Feedback system
+* Manage doctors and departments
+* Track queues and analytics
+* Configure system settings
+* Send broadcast notifications
+* Generate usage and performance reports
 
-## Technology Stack
+### 👤 Patient Portal
 
-- **Backend**: Django 5.2.7
-- **Database**: SQLite (development) / PostgreSQL (production)
-- **Real-time**: Django Channels + WebSockets
-- **Task Queue**: Celery + Redis
-- **Notifications**: Twilio API
-- **Frontend**: Bootstrap 5 + JavaScript
-- **API**: Django REST Framework
+* Easy online registration
+* Live queue position updates
+* Estimated waiting time
+* Feedback submission
+* Real-time notification alerts
 
-## Installation & Setup
+---
+
+## 🧩 Technology Stack
+
+| Component            | Technology                       |
+| -------------------- | -------------------------------- |
+| **Backend**          | Django 5.2.7                     |
+| **Database**         | SQLite (Dev) / PostgreSQL (Prod) |
+| **Real-time Engine** | Django Channels + WebSockets     |
+| **Task Queue**       | Celery + Redis                   |
+| **Notifications**    | Twilio API                       |
+| **Frontend**         | Bootstrap 5 + Vanilla JS         |
+| **API Layer**        | Django REST Framework            |
+
+---
+
+## ⚙️ Installation Guide
 
 ### Prerequisites
-- Python 3.8+
-- Redis Server (for WebSocket and Celery)
-- Twilio Account (for SMS/WhatsApp)
 
-### Quick Start
+* Python 3.8+
+* Redis Server (for WebSockets & Celery)
+* Twilio Account (for SMS/WhatsApp)
 
-1. **Clone and Setup Environment**
+### Step-by-Step Setup
+
+#### 1️⃣ Clone & Setup Environment
+
 ```bash
-# Clone the repository
 git clone <repository_url>
 cd smartqueue
 
-# Create virtual environment
 python -m venv smartqueue_env
+# Activate
+smartqueue_env\Scripts\activate  # Windows
+source smartqueue_env/bin/activate  # Linux/Mac
 
-# Activate virtual environment
-# Windows:
-smartqueue_env\Scripts\activate
-# Linux/Mac:
-source smartqueue_env/bin/activate
-
-# Install dependencies
 pip install django djangorestframework django-cors-headers twilio channels channels-redis celery redis
 ```
 
-2. **Configure Database**
+#### 2️⃣ Database Configuration
+
 ```bash
-# Run migrations
 python manage.py makemigrations
 python manage.py migrate
 ```
 
-3. **Setup Initial Data**
+#### 3️⃣ Load Demo Data
+
 ```bash
-# Create initial data with demo patients
 python manage.py setup_smartqueue --demo-data
 ```
 
-4. **Configure Twilio (Optional)**
-Edit `smartqueue/settings.py`:
+#### 4️⃣ Twilio Configuration (Optional)
+
+In `smartqueue/settings.py`:
+
 ```python
-TWILIO_ACCOUNT_SID = 'your_account_sid_here'
-TWILIO_AUTH_TOKEN = 'your_auth_token_here'
-TWILIO_PHONE_NUMBER = 'your_twilio_phone_number_here'
+TWILIO_ACCOUNT_SID = 'your_account_sid'
+TWILIO_AUTH_TOKEN = 'your_auth_token'
+TWILIO_PHONE_NUMBER = 'your_twilio_phone_number'
 ```
 
-5. **Start Services**
-
-In separate terminals:
+#### 5️⃣ Start Services
 
 ```bash
-# Terminal 1: Start Redis Server
+# Terminal 1
 redis-server
 
-# Terminal 2: Start Celery Worker
+# Terminal 2
 celery -A smartqueue worker --loglevel=info
 
-# Terminal 3: Start Django Server
+# Terminal 3
 python manage.py runserver
 ```
 
-### Access URLs
+---
 
-- **Patient Registration**: http://127.0.0.1:8000/patients/register/
-- **Doctor Login**: http://127.0.0.1:8000/doctors/login/
-- **Admin Panel**: http://127.0.0.1:8000/adminpanel/login/
-- **Django Admin**: http://127.0.0.1:8000/admin/
+## 🌐 Access Points
+
+| Interface                | URL                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| **Patient Registration** | [http://127.0.0.1:8000/patients/register/](http://127.0.0.1:8000/patients/register/) |
+| **Doctor Login**         | [http://127.0.0.1:8000/doctors/login/](http://127.0.0.1:8000/doctors/login/)         |
+| **Admin Panel**          | [http://127.0.0.1:8000/adminpanel/login/](http://127.0.0.1:8000/adminpanel/login/)   |
+| **Django Admin**         | [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)                         |
 
 ### Default Credentials
 
-| Role | Username | Password | Description |
-|------|----------|----------|-------------|
-| Superuser | admin | admin123 | Full system access |
-| Doctor | dr.smith | doctor123 | Sample doctor account |
-| Admin | admin.manager | admin123 | Sample admin account |
+| Role      | Username      | Password  | Access                |
+| --------- | ------------- | --------- | --------------------- |
+| Superuser | admin         | admin123  | Full access           |
+| Doctor    | dr.smith      | doctor123 | Sample doctor account |
+| Admin     | admin.manager | admin123  | Sample admin account  |
 
-## API Endpoints
+---
+
+## 📡 API Endpoints
 
 ### Patient APIs
-- `POST /patients/api/register/` - Register new patient
-- `GET /patients/api/departments/` - List departments
-- `GET /patients/api/queue/{dept_id}/` - Queue status
-- `GET /patients/api/patient/{patient_id}/status/` - Patient status
-- `POST /patients/api/check-patient/` - Check existing patient
-- `POST /patients/api/feedback/` - Submit feedback
+
+* `POST /patients/api/register/` – Register new patient
+* `GET /patients/api/departments/` – List departments
+* `GET /patients/api/queue/{dept_id}/` – Get queue status
+* `GET /patients/api/patient/{patient_id}/status/` – Get patient status
+* `POST /patients/api/check-patient/` – Verify existing patient
+* `POST /patients/api/feedback/` – Submit feedback
 
 ### Doctor APIs
-- `POST /doctors/api/` - Doctor operations (call next, start/complete consultation)
-- `GET /doctors/api/` - Get doctor dashboard data
-- `POST /doctors/api/schedule/` - Update doctor schedule
+
+* `GET /doctors/api/` – Fetch dashboard data
+* `POST /doctors/api/` – Call next, start or complete consultation
+* `POST /doctors/api/schedule/` – Update schedule
 
 ### Admin APIs
-- `POST /adminpanel/api/` - Admin operations (manage departments, queues)
-- `GET /adminpanel/api/` - Get admin dashboard data
 
-## WebSocket Connections
+* `GET /adminpanel/api/` – Admin dashboard data
+* `POST /adminpanel/api/` – Department/queue management
 
-### Real-time Updates
-- **Queue Updates**: `ws://localhost:8000/ws/queue/{department_id}/`
-- **Patient Updates**: `ws://localhost:8000/ws/patient/{patient_id}/`
-- **Doctor Updates**: `ws://localhost:8000/ws/doctor/{doctor_id}/`
+---
 
-## Database Models
+## 🔌 WebSocket Connections
+
+| Purpose         | URL                                             |
+| --------------- | ----------------------------------------------- |
+| Queue Updates   | `ws://localhost:8000/ws/queue/{department_id}/` |
+| Patient Updates | `ws://localhost:8000/ws/patient/{patient_id}/`  |
+| Doctor Updates  | `ws://localhost:8000/ws/doctor/{doctor_id}/`    |
+
+---
+
+## 🧱 Database Models
 
 ### Core Models
-- **Department**: Hospital departments
-- **Patient**: Patient information
-- **Queue**: Token and queue entries
-- **Doctor**: Doctor profiles
-- **PatientFeedback**: Post-consultation feedback
+
+* **Department** – Hospital departments
+* **Patient** – Patient details
+* **Queue** – Queue entries and tokens
+* **Doctor** – Doctor information
+* **PatientFeedback** – Feedback records
 
 ### Admin Models
-- **AdminUser**: Admin user profiles
-- **DepartmentAnalytics**: Daily analytics
-- **SystemConfiguration**: System settings
-- **AuditLog**: Activity logging
+
+* **AdminUser** – Admin profiles
+* **DepartmentAnalytics** – Daily stats
+* **SystemConfiguration** – System settings
+* **AuditLog** – Activity logs
 
 ### Notification Models
-- **NotificationTemplate**: Message templates
-- **Notification**: Sent notifications
-- **NotificationPreference**: Patient preferences
 
-## Deployment
+* **NotificationTemplate** – Message templates
+* **Notification** – Sent messages
+* **NotificationPreference** – User preferences
 
-### Production Setup
+---
 
-1. **Environment Variables**
+## 🛠️ Deployment Guide
+
+### Environment Variables
+
 ```bash
 export DEBUG=False
 export SECRET_KEY=your_secret_key
@@ -182,9 +207,9 @@ export TWILIO_ACCOUNT_SID=your_sid
 export TWILIO_AUTH_TOKEN=your_token
 ```
 
-2. **Database Configuration**
+### Database Setup
+
 ```python
-# settings.py
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -197,27 +222,26 @@ DATABASES = {
 }
 ```
 
-3. **Static Files**
+### Static Files
+
 ```bash
 python manage.py collectstatic
 ```
 
-4. **Production Server**
+### Production Server
+
 ```bash
-# Using Gunicorn + Daphne
 pip install gunicorn daphne
 
-# HTTP Server
-gunicorn smartqueue.wsgi:application
-
-# WebSocket Server
-daphne smartqueue.asgi:application
+gunicorn smartqueue.wsgi:application  # HTTP
+daphne smartqueue.asgi:application    # WebSocket
 ```
 
-### Docker Setup
+---
+
+## 🐳 Docker Setup
 
 ```dockerfile
-# Dockerfile
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -231,111 +255,110 @@ EXPOSE 8000
 CMD ["gunicorn", "smartqueue.wsgi:application", "--bind", "0.0.0.0:8000"]
 ```
 
-## Features in Detail
+---
+
+## 📈 Feature Details
 
 ### 🎫 Token Management
-- Automatic sequential numbering per department
-- Daily reset of token counters
-- Priority-based queue ordering
-- Real-time position tracking
+
+* Department-wise sequential numbering
+* Daily auto-reset
+* Priority queueing (Normal, High, Emergency)
+* Real-time position tracking
 
 ### 📱 Notifications
-- SMS alerts via Twilio
-- WhatsApp message support
-- Customizable message templates
-- Queue status notifications
-- Turn approaching alerts
+
+* SMS & WhatsApp via Twilio
+* Customizable message templates
+* Queue status & turn alerts
+* Estimated wait time updates
 
 ### 📊 Analytics
-- Daily department statistics
-- Doctor performance metrics
-- Patient satisfaction tracking
-- Wait time analysis
-- Peak hour identification
+
+* Daily stats per department
+* Doctor performance metrics
+* Patient satisfaction scores
+* Average wait-time reports
+* Peak hour analysis
 
 ### 🔒 Security
-- Role-based access control
-- User authentication
-- Activity audit logging
-- CSRF protection
-- Input validation
 
-## Customization
+* Role-based access control
+* Authentication & CSRF protection
+* Activity audit logs
+* Input validation
 
-### Adding New Departments
+---
+
+## 🧰 Customization
+
+### Add a Department
+
 ```python
-# Via Django Admin or API
 Department.objects.create(
-    name="New Department",
-    description="Department description"
+    name="Dermatology",
+    description="Skin and hair care department"
 )
 ```
 
-### Custom Notification Templates
+### Add Custom Notification Template
+
 ```python
 NotificationTemplate.objects.create(
     name="Custom Alert",
     template_type="custom",
-    sms_template="Hello {name}, custom message here..."
+    sms_template="Hello {name}, your appointment is scheduled for {time}."
 )
 ```
 
-### Queue Priority Rules
-Modify `Queue.get_position_in_queue()` method to implement custom priority logic.
+### Modify Queue Priority Logic
 
-## Troubleshooting
-
-### Common Issues
-
-1. **WebSocket Connection Failed**
-   - Ensure Redis server is running
-   - Check firewall settings
-   - Verify ASGI configuration
-
-2. **SMS Not Sending**
-   - Verify Twilio credentials
-   - Check phone number format
-   - Ensure Celery worker is running
-
-3. **Database Errors**
-   - Run migrations: `python manage.py migrate`
-   - Check database connection settings
-
-### Debug Mode
-Set `DEBUG = True` in settings.py for development debugging.
-
-## Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/new-feature`
-3. Commit changes: `git commit -am 'Add new feature'`
-4. Push to branch: `git push origin feature/new-feature`
-5. Submit pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-For support and questions:
-- Email: support@smartqueue.com
-- Documentation: [Project Wiki]
-- Issues: [GitHub Issues]
-
-## Roadmap
-
-### Upcoming Features
-- [ ] Mobile app (React Native/Flutter)
-- [ ] Video consultation integration
-- [ ] Appointment scheduling
-- [ ] Multi-language support
-- [ ] Advanced analytics dashboard
-- [ ] Payment integration
-- [ ] Insurance verification
-- [ ] Prescription management
+Override `Queue.get_position_in_queue()` to define custom priority rules.
 
 ---
 
-**SmartQueue** - Making healthcare queues smarter, one token at a time! 🏥✨#   m e d i c a l a p p  
- 
+## ⚠️ Troubleshooting
+
+| Issue                           | Possible Fix                                           |
+| ------------------------------- | ------------------------------------------------------ |
+| **WebSocket Connection Failed** | Ensure Redis is running, check ASGI setup              |
+| **SMS Not Sending**             | Verify Twilio credentials & Celery worker              |
+| **Database Errors**             | Run `python manage.py migrate` and confirm DB settings |
+
+Set `DEBUG = True` in `settings.py` for detailed error logs during development.
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a new branch: `git checkout -b feature/your-feature`
+3. Commit changes: `git commit -am 'Add feature'`
+4. Push: `git push origin feature/your-feature`
+5. Submit a pull request
+
+---
+
+## 📜 License
+
+Licensed under the **MIT License**. See the LICENSE file for details.
+
+---
+
+
+## 🧭 Roadmap
+
+| Feature                           | Status    |
+| --------------------------------- | --------- |
+| Mobile App (Flutter/React Native) | ⏳ Planned |
+| Video Consultations               | ⏳ Planned |
+| Appointment Scheduling            | ⏳ Planned |
+| Multi-language Support            | ⏳ Planned |
+| Advanced Analytics Dashboard      | ⏳ Planned |
+| Payment Integration               | ⏳ Planned |
+| Insurance Verification            | ⏳ Planned |
+| Prescription Management           | ⏳ Planned |
+
+---
+
+**SmartQueue** – Making healthcare queues smarter, faster, and more connected. 🏥✨
