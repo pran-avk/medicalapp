@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}Debug - SmartQueue{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <h2 class="mb-4"><i class="bi bi-bug"></i> Debug Information</h2>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Available Departments</h5>
+                </div>
+                <div class="card-body">
+                    <div id="departmentList">Loading...</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Test Registration</h5>
+                </div>
+                <div class="card-body">
+                    <form id="testForm">
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" id="testName" value="Test Patient">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="testPhone" value="1234567890">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Department ID</label>
+                            <input type="number" class="form-control" id="testDept" value="1">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Test Register</button>
+                    </form>
+                    <div id="testResult" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load departments
+fetch('/patients/api/departments/')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let html = '<table class="table table-striped">';
+            html += '<thead><tr><th>ID</th><th>Name</th><th>Waiting</th><th>Current Token</th></tr></thead><tbody>';
+            data.departments.forEach(dept => {
+                html += `<tr>
+                    <td>${dept.id}</td>
+                    <td>${dept.name}</td>
+                    <td>${dept.waiting_count}</td>
+                    <td>${dept.current_token}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            document.getElementById('departmentList').innerHTML = html;
+        } else {
+            document.getElementById('departmentList').innerHTML = 
+                `<div class="alert alert-danger">${data.message}</div>`;
+        }
+    })
+    .catch(error => {
+        document.getElementById('departmentList').innerHTML = 
+            `<div class="alert alert-danger">Error: ${error}</div>`;
+    });
+
+// Test form
+document.getElementById('testForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const data = {
+        name: document.getElementById('testName').value,
+        phone_number: document.getElementById('testPhone').value,
+        department_id: document.getElementById('testDept').value
+    };
+    
+    console.log('Sending data:', data);
+    
+    fetch('/patients/api/register/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        let html = '';
+        if (data.success) {
+            html = `<div class="alert alert-success">
+                <h5>Success!</h5>
+                <p><strong>Token:</strong> ${data.token_number}</p>
+                <p><strong>Department:</strong> ${data.department}</p>
+                <p><strong>Position:</strong> #${data.position}</p>
+                <p><strong>Wait Time:</strong> ${data.estimated_wait_time} minutes</p>
+            </div>`;
+        } else {
+            html = `<div class="alert alert-danger">
+                <h5>Error</h5>
+                <p>${data.message}</p>
+            </div>`;
+        }
+        document.getElementById('testResult').innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('testResult').innerHTML = 
+            `<div class="alert alert-danger">Error: ${error}</div>`;
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

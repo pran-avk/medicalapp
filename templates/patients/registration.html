@@ -1,0 +1,361 @@
+{% extends 'base.html' %}
+
+{% block title %}Patient Registration - SmartQueue{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-person-plus text-primary"></i>
+                Patient Registration
+            </h1>
+            <p class="lead text-muted">Register for your medical consultation and get your token number</p>
+        </div>
+
+        <!-- Phone Check Section -->
+        <div class="card token-card mb-4" id="phoneCheckCard">
+            <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="bi bi-telephone"></i> Check Existing Registration
+                </h5>
+                <div class="row">
+                    <div class="col-md-8">
+                        <input type="tel" class="form-control" id="phoneCheck" 
+                               placeholder="Enter your phone number" maxlength="15">
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-outline-primary w-100" id="checkPhoneBtn">
+                            <i class="bi bi-search"></i> Check
+                        </button>
+                    </div>
+                </div>
+                <div id="phoneCheckResult" class="mt-3"></div>
+            </div>
+        </div>
+
+        <!-- Registration Form -->
+        <div class="card token-card" id="registrationCard">
+            <div class="card-body">
+                <h5 class="card-title mb-4">
+                    <i class="bi bi-clipboard-plus"></i> New Registration
+                </h5>
+                
+                <form id="registrationForm">
+                    <div class="row">
+                        <!-- Basic Information -->
+                        <div class="col-md-6 mb-3">
+                            <label for="patientName" class="form-label">Full Name *</label>
+                            <input type="text" class="form-control" id="patientName" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="patientPhone" class="form-label">Phone Number *</label>
+                            <input type="tel" class="form-control" id="patientPhone" required maxlength="15">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="patientEmail" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="patientEmail">
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="patientAge" class="form-label">Age</label>
+                            <input type="number" class="form-control" id="patientAge" min="1" max="120">
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="patientGender" class="form-label">Gender</label>
+                            <select class="form-select" id="patientGender">
+                                <option value="">Select</option>
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                                <option value="O">Other</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Department Selection -->
+                        <div class="col-12 mb-3">
+                            <label for="department" class="form-label">Department *</label>
+                            <select class="form-select" id="department" required>
+                                <option value="">Select Department</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}" 
+                                        data-waiting="{{ dept.get_waiting_count }}"
+                                        data-current="{{ dept.get_current_token_number }}">
+                                    {{ dept.name }} - Current Token: {{ dept.get_current_token_number|add:"-1" }} 
+                                    ({{ dept.get_waiting_count }} waiting)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Additional Information -->
+                        <div class="col-12 mb-3">
+                            <label for="patientAddress" class="form-label">Address</label>
+                            <textarea class="form-control" id="patientAddress" rows="2"></textarea>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="emergencyContact" class="form-label">Emergency Contact</label>
+                            <input type="tel" class="form-control" id="emergencyContact" maxlength="15">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="priority" class="form-label">Priority</label>
+                            <select class="form-select" id="priority">
+                                <option value="normal">Normal</option>
+                                <option value="high">High Priority</option>
+                                <option value="emergency">Emergency</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-12 mb-3">
+                            <label for="notes" class="form-label">Additional Notes</label>
+                            <textarea class="form-control" id="notes" rows="3" 
+                                      placeholder="Any additional information or special requirements"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Submit Button -->
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary btn-lg px-5">
+                            <i class="bi bi-ticket-perforated"></i> Get Token
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Processing registration...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle"></i> Registration Successful
+                </h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="token-number mb-3" id="tokenDisplay">--</div>
+                <h4 class="mb-3">Your Token Number</h4>
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Department:</strong>
+                        <div id="departmentDisplay" class="text-muted">--</div>
+                    </div>
+                    <div class="col-6">
+                        <strong>Position:</strong>
+                        <div id="positionDisplay" class="text-muted">--</div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <strong>Estimated Wait Time:</strong>
+                        <div id="waitTimeDisplay" class="text-muted">--</div>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle"></i>
+                    You will receive SMS notifications about your queue status.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="viewStatusBtn">
+                    <i class="bi bi-eye"></i> View Status
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentPatientId = null;
+    
+    // Phone check functionality
+    document.getElementById('checkPhoneBtn').addEventListener('click', function() {
+        const phoneNumber = document.getElementById('phoneCheck').value.trim();
+        if (!phoneNumber) {
+            showNotification('Please enter a phone number', 'warning');
+            return;
+        }
+        
+        checkExistingPatient(phoneNumber);
+    });
+    
+    // Registration form submission
+    document.getElementById('registrationForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitRegistration();
+    });
+    
+    // View status button
+    document.getElementById('viewStatusBtn').addEventListener('click', function() {
+        if (currentPatientId) {
+            window.location.href = `/patients/status/${currentPatientId}/`;
+        }
+    });
+    
+    function checkExistingPatient(phoneNumber) {
+        fetch('/patients/api/check-patient/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                phone_number: phoneNumber
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const resultDiv = document.getElementById('phoneCheckResult');
+            
+            if (data.success) {
+                if (data.patient_exists) {
+                    if (data.has_active_token) {
+                        resultDiv.innerHTML = `
+                            <div class="alert alert-info">
+                                <h6><i class="bi bi-person-check"></i> Existing Patient Found</h6>
+                                <p><strong>Name:</strong> ${data.patient.name}</p>
+                                <p><strong>Active Token:</strong> #${data.queue_entry.token_number} 
+                                   (${data.queue_entry.department})</p>
+                                <p><strong>Status:</strong> 
+                                   <span class="status-badge status-${data.queue_entry.status}">
+                                       ${data.queue_entry.status.replace('_', ' ')}
+                                   </span>
+                                </p>
+                                <button class="btn btn-sm btn-primary" onclick="window.location.href='/patients/status/${data.patient.id}/'">
+                                    <i class="bi bi-eye"></i> View Status
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <div class="alert alert-success">
+                                <h6><i class="bi bi-person-check"></i> Welcome Back!</h6>
+                                <p><strong>Name:</strong> ${data.patient.name}</p>
+                                <p>You can register for a new token below.</p>
+                            </div>
+                        `;
+                        
+                        // Pre-fill form with existing patient data
+                        document.getElementById('patientName').value = data.patient.name;
+                        document.getElementById('patientPhone').value = data.patient.phone_number;
+                        document.getElementById('patientEmail').value = data.patient.email || '';
+                    }
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="bi bi-person-plus"></i> New patient. Please fill the registration form below.
+                        </div>
+                    `;
+                    document.getElementById('patientPhone').value = phoneNumber;
+                }
+            } else {
+                showNotification('Error checking patient: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error checking patient information', 'danger');
+        });
+    }
+    
+    function submitRegistration() {
+        const formData = {
+            name: document.getElementById('patientName').value,
+            phone_number: document.getElementById('patientPhone').value,
+            email: document.getElementById('patientEmail').value,
+            age: document.getElementById('patientAge').value ? parseInt(document.getElementById('patientAge').value) : null,
+            gender: document.getElementById('patientGender').value,
+            address: document.getElementById('patientAddress').value,
+            emergency_contact: document.getElementById('emergencyContact').value,
+            priority: document.getElementById('priority').value,
+            notes: document.getElementById('notes').value,
+            department_id: document.getElementById('department').value
+        };
+        
+        // Validation
+        if (!formData.name || !formData.phone_number || !formData.department_id) {
+            showNotification('Please fill all required fields', 'warning');
+            return;
+        }
+        
+        // Show loading
+        document.getElementById('loadingSpinner').style.display = 'block';
+        document.getElementById('registrationCard').style.display = 'none';
+        
+        fetch('/patients/api/register/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            
+            if (data.success) {
+                // Show success modal
+                document.getElementById('tokenDisplay').textContent = data.token_number;
+                document.getElementById('departmentDisplay').textContent = data.department;
+                document.getElementById('positionDisplay').textContent = `#${data.position}`;
+                document.getElementById('waitTimeDisplay').textContent = `${data.estimated_wait_time || 'N/A'} minutes`;
+                
+                // Store patient ID for status viewing
+                currentPatientId = data.queue_id;
+                
+                const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                successModal.show();
+                
+                // Reset form
+                document.getElementById('registrationForm').reset();
+                document.getElementById('phoneCheckResult').innerHTML = '';
+            } else {
+                showNotification('Registration failed: ' + data.message, 'danger');
+                document.getElementById('registrationCard').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('registrationCard').style.display = 'block';
+            showNotification('Error submitting registration', 'danger');
+        });
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %}

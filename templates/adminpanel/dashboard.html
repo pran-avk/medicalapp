@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - SmartQueue{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-danger mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand">
+                <i class="bi bi-shield-lock-fill me-2"></i>
+                Admin Dashboard
+            </span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <span class="nav-link">
+                            <i class="bi bi-person-circle me-2"></i>{{ user.username }}
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/">
+                            <i class="bi bi-gear me-2"></i>Django Admin
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <form method="post" action="{% url 'adminpanel:logout' %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-light btn-sm">
+                                <i class="bi bi-box-arrow-right me-2"></i>Logout
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Statistics Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Patients Today</h6>
+                    <h2 class="mb-0">{{ total_patients_today }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Consultations Done</h6>
+                    <h2 class="mb-0">{{ consultations_done }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Currently Waiting</h6>
+                    <h2 class="mb-0">{{ currently_waiting }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Active Doctors</h6>
+                    <h2 class="mb-0">{{ active_doctors }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Overview -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-hospital me-2"></i>Department Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Department</th>
+                                    <th>Waiting</th>
+                                    <th>In Progress</th>
+                                    <th>Completed</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dept in departments %}
+                                <tr>
+                                    <td>
+                                        <i class="bi bi-hospital me-2"></i>
+                                        {{ dept.name }}
+                                    </td>
+                                    <td><span class="badge bg-warning">{{ dept.waiting_count }}</span></td>
+                                    <td><span class="badge bg-info">{{ dept.in_progress }}</span></td>
+                                    <td><span class="badge bg-success">{{ dept.completed }}</span></td>
+                                    <td>
+                                        <a href="{% url 'patients:queue_display' dept.id %}" class="btn btn-sm btn-primary" target="_blank">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No departments available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-lightning-fill me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/admin/patients/department/" class="btn btn-primary">
+                            <i class="bi bi-hospital me-2"></i>Manage Departments
+                        </a>
+                        <a href="/admin/doctors/doctor/" class="btn btn-info">
+                            <i class="bi bi-person-badge me-2"></i>Manage Doctors
+                        </a>
+                        <a href="/admin/patients/patient/" class="btn btn-success">
+                            <i class="bi bi-people me-2"></i>View Patients
+                        </a>
+                        <a href="/admin/patients/queue/" class="btn btn-warning">
+                            <i class="bi bi-list-ol me-2"></i>View Queue
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Info -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>System Info</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>Total Departments:</strong> {{ total_departments }}</p>
+                    <p class="mb-2"><strong>Total Doctors:</strong> {{ total_doctors }}</p>
+                    <p class="mb-2"><strong>Total Patients:</strong> {{ total_patients }}</p>
+                    <p class="mb-0"><strong>System Status:</strong> <span class="badge bg-success">Active</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

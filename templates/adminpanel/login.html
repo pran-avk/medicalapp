@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Login - SmartQueue{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card shadow-lg border-0">
+                    <div class="card-body p-5">
+                        <!-- Logo/Header -->
+                        <div class="text-center mb-4">
+                            <div class="bg-danger bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="bi bi-shield-lock text-white" style="font-size: 2.5rem;"></i>
+                            </div>
+                            <h2 class="fw-bold text-dark">Admin Login</h2>
+                            <p class="text-muted">System Administration Access</p>
+                        </div>
+
+                        <!-- Error Message -->
+                        {% if error %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            {{ error }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endif %}
+
+                        <!-- Login Form -->
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            <div class="mb-4">
+                                <label for="username" class="form-label fw-semibold">
+                                    <i class="bi bi-person-circle me-2"></i>Username
+                                </label>
+                                <input type="text" 
+                                       class="form-control form-control-lg" 
+                                       id="username" 
+                                       name="username" 
+                                       placeholder="Enter admin username"
+                                       required 
+                                       autofocus>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="password" class="form-label fw-semibold">
+                                    <i class="bi bi-lock-fill me-2"></i>Password
+                                </label>
+                                <div class="input-group">
+                                    <input type="password" 
+                                           class="form-control form-control-lg" 
+                                           id="password" 
+                                           name="password" 
+                                           placeholder="Enter your password"
+                                           required>
+                                    <button class="btn btn-outline-secondary" 
+                                            type="button" 
+                                            onclick="togglePassword()">
+                                        <i class="bi bi-eye" id="toggleIcon"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="d-grid mb-3">
+                                <button type="submit" class="btn btn-danger btn-lg">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>
+                                    Admin Login
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Demo Credentials -->
+                        <div class="alert alert-info small mb-0">
+                            <strong><i class="bi bi-info-circle me-2"></i>Demo Credentials:</strong><br>
+                            <span class="font-monospace">Username: admin</span><br>
+                            <span class="font-monospace">Password: admin123</span>
+                        </div>
+
+                        <!-- Additional Links -->
+                        <hr class="my-4">
+                        <div class="text-center">
+                            <a href="{% url 'patients:registration' %}" class="text-decoration-none me-3">
+                                <i class="bi bi-person-plus me-1"></i>Patient Registration
+                            </a>
+                            <a href="{% url 'doctors:login' %}" class="text-decoration-none">
+                                <i class="bi bi-person-badge me-1"></i>Doctor Login
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="text-center mt-4 text-white">
+                    <p class="mb-0">
+                        <i class="bi bi-hospital me-2"></i>
+                        SmartQueue Medical Token Management System
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('bi-eye');
+        toggleIcon.classList.add('bi-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('bi-eye-slash');
+        toggleIcon.classList.add('bi-eye');
+    }
+}
+</script>
+
+<style>
+    .card {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    
+    .btn-danger {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border: none;
+        transition: transform 0.2s;
+    }
+    
+    .btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+    }
+</style>
+{% endblock %}

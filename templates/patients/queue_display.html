@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ department.name }} Queue - SmartQueue{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-list-ol text-primary"></i>
+                {{ department.name }} Queue
+            </h1>
+            <p class="lead text-muted">Live queue status and waiting list</p>
+        </div>
+
+        <!-- Current Status -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number text-warning" id="currentToken">-</div>
+                    <p class="text-muted mb-0">Current Token</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number text-primary" id="totalWaiting">-</div>
+                    <p class="text-muted mb-0">Total Waiting</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number text-success" id="totalCompleted">-</div>
+                    <p class="text-muted mb-0">Completed Today</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number text-info" id="inConsultation">-</div>
+                    <p class="text-muted mb-0">In Progress</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Consultations -->
+        <div class="card token-card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-chat-dots-fill text-success"></i> 
+                    Current Consultations
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="currentConsultations">
+                    <div class="text-center text-muted">
+                        <i class="bi bi-hourglass-split"></i>
+                        <p>Loading current consultations...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Waiting Queue -->
+        <div class="card token-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-people-fill text-primary"></i> 
+                    Waiting Queue
+                </h5>
+                <div>
+                    <small class="text-muted">Auto-refreshes every 30 seconds</small>
+                    <button class="btn btn-sm btn-outline-primary ms-2" id="refreshBtn">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="waitingQueue">
+                    <div class="text-center text-muted">
+                        <i class="bi bi-hourglass-split"></i>
+                        <p>Loading waiting queue...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JSON data for JS -->
+{{ department|json_script:"department-data" }}
+
+<!-- Auto-refresh indicator -->
+<div class="position-fixed bottom-0 end-0 p-3">
+    <div id="refreshIndicator" class="bg-primary text-white px-3 py-2 rounded" style="display: none;">
+        <i class="bi bi-arrow-clockwise"></i> Updating...
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.queue-position {
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #495057;
+}
+
+.token-display {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.consultation-item {
+    background: #e8f5e8;
+    border: 1px solid #c3e6cb;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.priority-indicator {
+    width: 8px;
+    height: 100%;
+    border-radius: 4px;
+}
+
+.priority-normal { background-color: #28a745; }
+.priority-high { background-color: #ffc107; }
+.priority-emergency { background-color: #dc3545; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.queue-item-new {
+    animation: fadeIn 0.5s ease-out;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const departmentDataEl = document.getElementById('department-data');
+    const departmentData = departmentDataEl ? JSON.parse(departmentDataEl.textContent) : null;
+    const departmentId = departmentData ? departmentData.id : null;
+    let refreshInterval;
+    let websocket = null;
+    
+    // Initialize
+    loadQueueData();
+    connectToWebSocket();
+    startAutoRefresh();
+    
+    // Event listeners
+    document.getElementById('refreshBtn').addEventListener('click', loadQueueData);
+    
+    function loadQueueData() {
+        showRefreshIndicator();
+        
+        fetch(`/patients/api/queue/${departmentId}/`)
+            .then(response => response.json())
+            .then(data => {
+                hideRefreshIndicator();
+                
+                if (data.success) {
+                    updateQueueDisplay(data);
+                } else {
+                    showNotification('Error loading queue data: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                hideRefreshIndicator();
+                showNotification('Error loading queue data', 'danger');
+            });
+    }
+    
+    function updateQueueDisplay(data) {
+        // Update statistics
+        const lastToken = data.waiting_queue.length > 0 ? 
+                         Math.max(...data.waiting_queue.map(q => q.token_number)) : 0;
+        
+        document.getElementById('currentToken').textContent = lastToken || '-';
+        document.getElementById('totalWaiting').textContent = data.total_waiting;
+        document.getElementById('totalCompleted').textContent = data.total_completed_today;
+        document.getElementById('inConsultation').textContent = data.total_in_consultation;
+        
+        // Update current consultations
+        updateCurrentConsultations(data.current_consultations);
+        
+        // Update waiting queue
+        updateWaitingQueue(data.waiting_queue);
+    }
+    
+    function updateCurrentConsultations(consultations) {
+        const container = document.getElementById('currentConsultations');
+        
+        if (consultations.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="bi bi-chat-x"></i>
+                    <p>No ongoing consultations</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div class="row">';
+        consultations.forEach(consultation => {
+            const startTime = consultation.consultation_started_at ? 
+                            new Date(consultation.consultation_started_at).toLocaleTimeString() : 'N/A';
+            
+            html += `
+                <div class="col-md-6 mb-2">
+                    <div class="consultation-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="token-display">#${consultation.token_number}</div>
+                                <small class="text-muted">${consultation.patient_name}</small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold text-success">${consultation.doctor_name}</div>
+                                <small class="text-muted">Started: ${startTime}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+    
+    function updateWaitingQueue(queue) {
+        const container = document.getElementById('waitingQueue');
+        
+        if (queue.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-people" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">No patients waiting</h5>
+                    <p>The queue is currently empty</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        queue.forEach((item, index) => {
+            const createdTime = new Date(item.created_at).toLocaleTimeString();
+            const priorityClass = `priority-${item.priority}`;
+            
+            html += `
+                <div class="queue-item ${priorityClass} mb-3" data-queue-id="${item.id}">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <div class="queue-position">${item.position}</div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="priority-indicator ${priorityClass}"></div>
+                        </div>
+                        <div class="col">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="token-display">#${item.token_number}</div>
+                                    <small class="text-muted">Token</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fw-bold">${item.patient_name}</div>
+                                    <small class="text-muted">${item.patient_phone}</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fw-bold">${item.estimated_wait_time || 'N/A'} min</div>
+                                    <small class="text-muted">Est. Wait</small>
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <div class="fw-bold text-primary">${item.priority.toUpperCase()}</div>
+                                    <small class="text-muted">${createdTime}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    function connectToWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/queue/${departmentId}/`;
+        
+        websocket = connectWebSocket(wsUrl, {
+            onMessage: function(data) {
+                if (data.type === 'queue_update') {
+                    updateQueueDisplay(data.data);
+                    
+                    // Add animation to new items
+                    setTimeout(() => {
+                        document.querySelectorAll('.queue-item').forEach(item => {
+                            item.classList.add('queue-item-new');
+                        });
+                    }, 100);
+                }
+            },
+            onOpen: function() {
+                console.log('Connected to queue WebSocket');
+                // Request initial queue status
+                websocket.send(JSON.stringify({
+                    type: 'get_queue_status'
+                }));
+            },
+            onClose: function() {
+                console.log('Disconnected from queue WebSocket');
+            }
+        });
+    }
+    
+    function startAutoRefresh() {
+        // Refresh every 30 seconds as fallback
+        refreshInterval = setInterval(() => {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                loadQueueData();
+            }
+        }, 30000);
+    }
+    
+    function showRefreshIndicator() {
+        document.getElementById('refreshIndicator').style.display = 'block';
+    }
+    
+    function hideRefreshIndicator() {
+        setTimeout(() => {
+            document.getElementById('refreshIndicator').style.display = 'none';
+        }, 1000);
+    }
+    
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+        }
+        if (websocket) {
+            websocket.close();
+        }
+    });
+});
+</script>
+{% endblock %}

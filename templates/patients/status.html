@@ -1,0 +1,536 @@
+{% extends 'base.html' %}
+
+{% block title %}Patient Status - SmartQueue{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <h1 class="display-5 mb-3">
+                <i class="bi bi-person-lines-fill text-primary"></i>
+                Patient Status
+            </h1>
+            <p class="lead text-muted">Track your consultation queue status in real-time</p>
+        </div>
+
+        <!-- Patient Info Card -->
+        <div class="card token-card mb-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="card-title mb-1">
+                            <i class="bi bi-person-circle"></i> {{ patient.name }}
+                        </h5>
+                        <p class="text-muted mb-0">
+                            <i class="bi bi-telephone"></i> {{ patient.phone_number }}
+                            {% if patient.email %}
+                                | <i class="bi bi-envelope"></i> {{ patient.email }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <button class="btn btn-outline-primary" id="refreshStatusBtn">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- JSON data for JS (use json_script to safely embed) -->
+        {{ patient|json_script:"patient-data" }}
+
+        <!-- Current Status Card -->
+        <div class="card token-card mb-4" id="statusCard">
+            <div class="card-body text-center">
+                <div id="statusContent">
+                    <!-- Status content will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Queue Information -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="stats-card">
+                    <div class="stats-number" id="positionNumber">-</div>
+                    <p class="text-muted mb-0">Position in Queue</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stats-card">
+                    <div class="stats-number" id="waitTimeNumber">-</div>
+                    <p class="text-muted mb-0">Est. Wait Time (min)</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stats-card">
+                    <div class="stats-number" id="totalWaitingNumber">-</div>
+                    <p class="text-muted mb-0">Total Waiting</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="card token-card mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-4">
+                    <i class="bi bi-clock-history"></i> Consultation Timeline
+                </h5>
+                <div id="timeline">
+                    <!-- Timeline will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="text-center mb-4">
+            <button class="btn btn-success me-2" id="feedbackBtn" style="display: none;">
+                <i class="bi bi-star"></i> Give Feedback
+            </button>
+            <a class="btn btn-outline-secondary" href="{% url 'patients:registration' %}">
+                <i class="bi bi-arrow-left"></i> Back to Registration
+            </a>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading status...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="modal fade" id="feedbackModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-star"></i> Rate Your Experience
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="feedbackForm">
+                    <div class="mb-3">
+                        <label class="form-label">Overall Rating *</label>
+                        <div class="rating-stars" data-rating="overall">
+                            <i class="bi bi-star" data-value="1"></i>
+                            <i class="bi bi-star" data-value="2"></i>
+                            <i class="bi bi-star" data-value="3"></i>
+                            <i class="bi bi-star" data-value="4"></i>
+                            <i class="bi bi-star" data-value="5"></i>
+                        </div>
+                        <input type="hidden" id="overallRating" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Wait Time Satisfaction</label>
+                        <div class="rating-stars" data-rating="wait_time">
+                            <i class="bi bi-star" data-value="1"></i>
+                            <i class="bi bi-star" data-value="2"></i>
+                            <i class="bi bi-star" data-value="3"></i>
+                            <i class="bi bi-star" data-value="4"></i>
+                            <i class="bi bi-star" data-value="5"></i>
+                        </div>
+                        <input type="hidden" id="waitTimeRating">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Doctor/Service Quality</label>
+                        <div class="rating-stars" data-rating="doctor">
+                            <i class="bi bi-star" data-value="1"></i>
+                            <i class="bi bi-star" data-value="2"></i>
+                            <i class="bi bi-star" data-value="3"></i>
+                            <i class="bi bi-star" data-value="4"></i>
+                            <i class="bi bi-star" data-value="5"></i>
+                        </div>
+                        <input type="hidden" id="doctorRating">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="feedbackText" class="form-label">Additional Comments</label>
+                        <textarea class="form-control" id="feedbackText" rows="4" 
+                                  placeholder="Please share your experience and suggestions..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitFeedbackBtn">
+                    <i class="bi bi-send"></i> Submit Feedback
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.rating-stars {
+    font-size: 1.5rem;
+    color: #ddd;
+    cursor: pointer;
+}
+
+.rating-stars i {
+    transition: color 0.2s;
+    margin-right: 5px;
+}
+
+.rating-stars i:hover,
+.rating-stars i.selected {
+    color: #ffc107;
+}
+
+.timeline-item {
+    border-left: 3px solid #e9ecef;
+    padding-left: 1.5rem;
+    padding-bottom: 1rem;
+    margin-left: 1rem;
+    position: relative;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #6c757d;
+}
+
+.timeline-item.active::before {
+    background-color: #28a745;
+}
+
+.timeline-item.current::before {
+    background-color: #007bff;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.status-waiting { background-color: #fff3cd; color: #856404; }
+.status-called { background-color: #cce5ff; color: #004085; }
+.status-in-consultation { background-color: #d4edda; color: #155724; }
+.status-completed { background-color: #f8f9fa; color: #495057; }
+.status-skipped { background-color: #f8d7da; color: #721c24; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const patientDataEl = document.getElementById('patient-data');
+    const patientData = patientDataEl ? JSON.parse(patientDataEl.textContent) : null;
+    const patientId = patientData ? patientData.id : null;
+    let currentQueueId = null;
+    let websocket = null;
+    
+    // Initialize page
+    loadPatientStatus();
+    
+    // Connect to WebSocket for real-time updates
+    connectToWebSocket();
+    
+    // Event listeners
+    document.getElementById('refreshStatusBtn').addEventListener('click', loadPatientStatus);
+    document.getElementById('feedbackBtn').addEventListener('click', showFeedbackModal);
+    document.getElementById('submitFeedbackBtn').addEventListener('click', submitFeedback);
+    
+    // Star rating functionality
+    initializeStarRatings();
+    
+    function loadPatientStatus() {
+        document.getElementById('loadingSpinner').style.display = 'block';
+        
+        fetch(`/patients/api/patient/${patientId}/status/`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingSpinner').style.display = 'none';
+                
+                if (data.success) {
+                    updateStatusDisplay(data);
+                } else {
+                    showNotification('Error loading status: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('loadingSpinner').style.display = 'none';
+                showNotification('Error loading patient status', 'danger');
+            });
+    }
+    
+    function updateStatusDisplay(data) {
+        const statusContent = document.getElementById('statusContent');
+        
+        if (!data.has_active_token) {
+            statusContent.innerHTML = `
+                <div class="alert alert-info">
+                    <h5><i class="bi bi-info-circle"></i> No Active Token Today</h5>
+                    <p>You don't have an active token for today. You can register for a new consultation.</p>
+                    <a href="{% url 'patients:registration' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Register Now
+                    </a>
+                </div>
+            `;
+            return;
+        }
+        
+        currentQueueId = data.queue_id || null;
+        
+        // Update main status
+        const statusBadge = `<span class="status-badge status-${data.status}">${data.status.replace('_', ' ').toUpperCase()}</span>`;
+        
+        statusContent.innerHTML = `
+            <div class="token-number mb-3">${data.token_number}</div>
+            <h4 class="mb-3">Token Number</h4>
+            <h5 class="mb-3">${data.department}</h5>
+            <div class="mb-3">${statusBadge}</div>
+        `;
+        
+        // Update stats
+        document.getElementById('positionNumber').textContent = data.position || '-';
+        document.getElementById('waitTimeNumber').textContent = data.estimated_wait_time || '-';
+        
+        // Update timeline
+        updateTimeline(data);
+        
+        // Show feedback button if completed
+        if (data.status === 'completed') {
+            document.getElementById('feedbackBtn').style.display = 'inline-block';
+        }
+        
+        // Load department queue info
+        loadDepartmentInfo(data.department);
+    }
+    
+    function updateTimeline(data) {
+        const timeline = document.getElementById('timeline');
+        const statuses = [
+            { key: 'created_at', label: 'Token Issued', icon: 'ticket-perforated' },
+            { key: 'called_at', label: 'Called for Consultation', icon: 'megaphone' },
+            { key: 'consultation_started_at', label: 'Consultation Started', icon: 'chat-dots' },
+            { key: 'consultation_ended_at', label: 'Consultation Completed', icon: 'check-circle' }
+        ];
+        
+        let timelineHtml = '';
+        
+        statuses.forEach(status => {
+            const timestamp = data[status.key];
+            const isActive = timestamp !== null;
+            const isCurrent = (status.key === 'called_at' && data.status === 'called') ||
+                             (status.key === 'consultation_started_at' && data.status === 'in_consultation');
+            
+            const itemClass = isActive ? 'active' : (isCurrent ? 'current' : '');
+            
+            timelineHtml += `
+                <div class="timeline-item ${itemClass}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">
+                                <i class="bi bi-${status.icon}"></i> ${status.label}
+                            </h6>
+                            ${timestamp ? `<small class="text-muted">${formatTime(timestamp)}</small>` : 
+                              (isCurrent ? '<small class="text-primary">In Progress...</small>' : 
+                               '<small class="text-muted">Pending</small>')}
+                        </div>
+                        ${isActive ? '<i class="bi bi-check-circle-fill text-success"></i>' : 
+                          (isCurrent ? '<i class="bi bi-clock text-primary"></i>' : 
+                           '<i class="bi bi-circle text-muted"></i>')}
+                    </div>
+                </div>
+            `;
+        });
+        
+        timeline.innerHTML = timelineHtml;
+    }
+    
+    function loadDepartmentInfo(departmentName) {
+        // This would load additional department info
+        // For now, we'll just update the total waiting from WebSocket
+    }
+    
+    function connectToWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/patient/${patientId}/`;
+        
+        websocket = connectWebSocket(wsUrl, {
+            onMessage: function(data) {
+                if (data.type === 'patient_update') {
+                    // Update the display with new data
+                    const updateData = data.data;
+                    updateStatusFromWebSocket(updateData);
+                    
+                    // Show notification based on status change
+                    if (updateData.status === 'called') {
+                        showNotification('Your turn is ready! Please proceed to the consultation room.', 'success');
+                    } else if (updateData.status === 'in_consultation') {
+                        showNotification('Your consultation has started.', 'info');
+                    } else if (updateData.status === 'completed') {
+                        showNotification('Your consultation is complete. Thank you for visiting!', 'success');
+                    }
+                }
+            },
+            onOpen: function() {
+                console.log('Connected to patient WebSocket');
+            },
+            onClose: function() {
+                console.log('Disconnected from patient WebSocket');
+            }
+        });
+    }
+    
+    function updateStatusFromWebSocket(data) {
+        // Update position and wait time
+        document.getElementById('positionNumber').textContent = data.position || '-';
+        document.getElementById('waitTimeNumber').textContent = data.estimated_wait_time || '-';
+        
+        // Update status badge
+        const statusBadge = document.querySelector('.status-badge');
+        if (statusBadge) {
+            statusBadge.className = `status-badge status-${data.status}`;
+            statusBadge.textContent = data.status.replace('_', ' ').toUpperCase();
+        }
+        
+        // Update timeline
+        updateTimeline(data);
+        
+        // Show feedback button if completed
+        if (data.status === 'completed') {
+            document.getElementById('feedbackBtn').style.display = 'inline-block';
+        }
+    }
+    
+    function showFeedbackModal() {
+        const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+        feedbackModal.show();
+    }
+    
+    function initializeStarRatings() {
+        document.querySelectorAll('.rating-stars').forEach(ratingGroup => {
+            const stars = ratingGroup.querySelectorAll('i');
+            const ratingType = ratingGroup.dataset.rating;
+            
+            stars.forEach((star, index) => {
+                star.addEventListener('click', function() {
+                    const rating = index + 1;
+                    updateStarRating(ratingGroup, rating, ratingType);
+                });
+                
+                star.addEventListener('mouseover', function() {
+                    highlightStars(stars, index + 1);
+                });
+            });
+            
+            ratingGroup.addEventListener('mouseleave', function() {
+                const currentRating = document.getElementById(ratingType + 'Rating').value;
+                highlightStars(stars, currentRating || 0);
+            });
+        });
+    }
+    
+    function updateStarRating(ratingGroup, rating, ratingType) {
+        document.getElementById(ratingType + 'Rating').value = rating;
+        const stars = ratingGroup.querySelectorAll('i');
+        highlightStars(stars, rating);
+    }
+    
+    function highlightStars(stars, rating) {
+        stars.forEach((star, index) => {
+            if (index < rating) {
+                star.classList.remove('bi-star');
+                star.classList.add('bi-star-fill', 'selected');
+            } else {
+                star.classList.remove('bi-star-fill', 'selected');
+                star.classList.add('bi-star');
+            }
+        });
+    }
+    
+    function submitFeedback() {
+        const overallRating = document.getElementById('overallRating').value;
+        
+        if (!overallRating) {
+            showNotification('Please provide an overall rating', 'warning');
+            return;
+        }
+        
+        const feedbackData = {
+            queue_id: currentQueueId,
+            rating: parseInt(overallRating),
+            wait_time_satisfaction: document.getElementById('wait_timeRating').value ? 
+                                   parseInt(document.getElementById('wait_timeRating').value) : null,
+            doctor_satisfaction: document.getElementById('doctorRating').value ? 
+                               parseInt(document.getElementById('doctorRating').value) : null,
+            overall_experience: parseInt(overallRating),
+            feedback_text: document.getElementById('feedbackText').value
+        };
+        
+        fetch('/patients/api/feedback/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(feedbackData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Thank you for your feedback!', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('feedbackModal')).hide();
+                document.getElementById('feedbackBtn').style.display = 'none';
+            } else {
+                showNotification('Error submitting feedback: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error submitting feedback', 'danger');
+        });
+    }
+    
+    function formatTime(timeString) {
+        if (!timeString) return 'N/A';
+        const date = new Date(timeString);
+        return date.toLocaleTimeString();
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Clean up WebSocket on page unload
+    window.addEventListener('beforeunload', function() {
+        if (websocket) {
+            websocket.close();
+        }
+    });
+});
+</script>
+{% endblock %}

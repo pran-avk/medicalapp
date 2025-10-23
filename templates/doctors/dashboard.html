@@ -1,0 +1,453 @@
+{% extends 'base.html' %}
+
+{% block title %}Doctor Dashboard - SmartQueue{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand">
+                <i class="bi bi-person-badge-fill me-2"></i>
+                Dr. {{ doctor.name }}
+            </span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <span class="nav-link">
+                            <i class="bi bi-hospital me-2"></i>{{ doctor.department.name }}
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'doctors:schedule' %}">
+                            <i class="bi bi-calendar-week me-2"></i>Schedule
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'doctors:history' %}">
+                            <i class="bi bi-clock-history me-2"></i>History
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <form method="post" action="{% url 'doctors:logout' %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-light btn-sm">
+                                <i class="bi bi-box-arrow-right me-2"></i>Logout
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="row">
+        <!-- Left Column - Queue Management -->
+        <div class="col-lg-8">
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Waiting</h6>
+                            <h2 class="mb-0" id="waitingCount">{{ waiting_count }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Today's Total</h6>
+                            <h2 class="mb-0" id="todayTotal">{{ today_total }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">In Progress</h6>
+                            <h2 class="mb-0" id="inProgress">{{ in_progress }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Completed</h6>
+                            <h2 class="mb-0" id="completedCount">{{ completed_count }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Patient Card -->
+            <div class="card mb-4" id="currentPatientCard" style="display: none;">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-person-check-fill me-2"></i>Current Patient</h5>
+                </div>
+                <div class="card-body">
+                    <div id="currentPatientInfo"></div>
+                </div>
+            </div>
+
+            <!-- Waiting Queue -->
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Waiting Queue</h5>
+                    <button class="btn btn-light btn-sm" onclick="callNextPatient()">
+                        <i class="bi bi-person-plus-fill me-2"></i>Call Next
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="queueList" class="list-group">
+                        <!-- Queue items will be loaded here -->
+                    </div>
+                    <div id="emptyQueue" class="text-center py-5 text-muted" style="display: none;">
+                        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                        <p class="mt-3">No patients waiting</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Actions -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-lightning-fill me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" onclick="callNextPatient()">
+                            <i class="bi bi-telephone-fill me-2"></i>Call Next Patient
+                        </button>
+                        <button class="btn btn-success" id="startConsultationBtn" style="display: none;" onclick="startConsultation()">
+                            <i class="bi bi-play-fill me-2"></i>Start Consultation
+                        </button>
+                        <button class="btn btn-info" id="completeConsultationBtn" style="display: none;" onclick="showCompleteModal()">
+                            <i class="bi bi-check-circle-fill me-2"></i>Complete Consultation
+                        </button>
+                        <button class="btn btn-warning" onclick="location.reload()">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Today's Schedule -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Today's Schedule</h5>
+                </div>
+                <div class="card-body">
+                    {% if schedule %}
+                    <p><strong>Working Hours:</strong></p>
+                    <p class="mb-1">
+                        <i class="bi bi-clock me-2"></i>
+                        {{ schedule.start_time|time:"g:i A" }} - {{ schedule.end_time|time:"g:i A" }}
+                    </p>
+                    {% else %}
+                    <p class="text-muted">No schedule for today</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Complete Consultation Modal -->
+<div class="modal fade" id="completeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Complete Consultation</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Consultation Notes</label>
+                    <textarea class="form-control" id="consultationNotes" rows="4" 
+                              placeholder="Enter diagnosis, prescription, or notes..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Prescription</label>
+                    <textarea class="form-control" id="prescription" rows="3" 
+                              placeholder="Enter prescription details..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Follow-up Required</label>
+                    <select class="form-select" id="followUpRequired">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="completeConsultation()">
+                    <i class="bi bi-check-circle me-2"></i>Complete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JSON data for JS -->
+{{ doctor|json_script:"doctor-data" }}
+<script>
+let currentQueueId = null;
+let ws = null;
+
+// Initialize WebSocket connection
+function initWebSocket() {
+    const doctorDataEl = document.getElementById('doctor-data');
+    const doctorData = doctorDataEl ? JSON.parse(doctorDataEl.textContent) : null;
+    const doctorId = doctorData ? doctorData.id : null;
+    ws = new WebSocket(`ws://${window.location.host}/ws/doctor/${doctorId}/`);
+    
+    ws.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        console.log('WebSocket message:', data);
+        loadDashboardData();
+    };
+    
+    ws.onclose = function() {
+        console.log('WebSocket disconnected, reconnecting...');
+        setTimeout(initWebSocket, 3000);
+    };
+}
+
+// Load dashboard data
+function loadDashboardData() {
+    fetch('/doctors/api/', {
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateDashboard(data);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Update dashboard UI
+function updateDashboard(data) {
+    // Update statistics
+    const stats = data.statistics || {};
+    document.getElementById('waitingCount').textContent = stats.waiting_count || 0;
+    document.getElementById('todayTotal').textContent = stats.today_total || 0;
+    document.getElementById('inProgress').textContent = stats.in_progress || 0;
+    document.getElementById('completedCount').textContent = stats.today_completed || 0;
+    
+    // Update current patient
+    if (data.current_patient) {
+        showCurrentPatient(data.current_patient);
+    } else {
+        document.getElementById('currentPatientCard').style.display = 'none';
+        document.getElementById('startConsultationBtn').style.display = 'none';
+        document.getElementById('completeConsultationBtn').style.display = 'none';
+    }
+    
+    // Update queue list
+    updateQueueList(data.waiting_list || []);
+}
+
+// Show current patient
+function showCurrentPatient(patient) {
+    currentQueueId = patient.id;
+    const card = document.getElementById('currentPatientCard');
+    const info = document.getElementById('currentPatientInfo');
+    
+    info.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Token:</strong> #${patient.token_number}</p>
+                <p><strong>Name:</strong> ${patient.patient_name}</p>
+                <p><strong>Phone:</strong> ${patient.patient_phone || 'N/A'}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Started:</strong> ${patient.consultation_started_at ? new Date(patient.consultation_started_at).toLocaleTimeString() : 'Not started'}</p>
+            </div>
+        </div>
+    `;
+    
+    card.style.display = 'block';
+    
+    // Show appropriate buttons based on consultation status
+    const hasStarted = patient.consultation_started_at !== null;
+    document.getElementById('startConsultationBtn').style.display = hasStarted ? 'none' : 'block';
+    document.getElementById('completeConsultationBtn').style.display = hasStarted ? 'block' : 'none';
+}
+
+// Update queue list
+function updateQueueList(patients) {
+    const list = document.getElementById('queueList');
+    const empty = document.getElementById('emptyQueue');
+    
+    if (!patients || patients.length === 0) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+    
+    empty.style.display = 'none';
+    list.innerHTML = patients.map((patient, index) => `
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1">
+                        <span class="badge bg-primary me-2">#${patient.token_number}</span>
+                        ${patient.patient_name}
+                        ${patient.priority && patient.priority !== 'normal' ? `<span class="badge bg-${patient.priority === 'emergency' ? 'danger' : 'warning'} ms-2">${patient.priority}</span>` : ''}
+                    </h6>
+                    <small class="text-muted">
+                        <i class="bi bi-telephone me-2"></i>${patient.patient_phone || patient.phone_number || 'N/A'}
+                        ${patient.estimated_wait_time ? `<br><i class="bi bi-clock me-2"></i>Wait: ~${patient.estimated_wait_time} min` : ''}
+                    </small>
+                </div>
+                <div>
+                    <span class="badge bg-secondary">Position: ${patient.position || (index + 1)}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Call next patient
+function callNextPatient() {
+    fetch('/doctors/api/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ action: 'call_next' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Patient called successfully', 'success');
+            loadDashboardData();
+        } else {
+            showNotification(data.message, 'warning');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error calling patient', 'danger');
+    });
+}
+
+// Start consultation
+function startConsultation() {
+    if (!currentQueueId) return;
+    
+    fetch('/doctors/api/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ 
+            action: 'start_consultation',
+            queue_id: currentQueueId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Consultation started', 'success');
+            loadDashboardData();
+        } else {
+            showNotification(data.message, 'danger');
+        }
+    });
+}
+
+// Show complete modal
+function showCompleteModal() {
+    const modal = new bootstrap.Modal(document.getElementById('completeModal'));
+    modal.show();
+}
+
+// Complete consultation
+function completeConsultation() {
+    if (!currentQueueId) return;
+    
+    const notes = document.getElementById('consultationNotes').value;
+    const prescription = document.getElementById('prescription').value;
+    const followUp = document.getElementById('followUpRequired').value === 'true';
+    
+    fetch('/doctors/api/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            action: 'complete_consultation',
+            queue_id: currentQueueId,
+            notes: notes,
+            prescription: prescription,
+            follow_up_required: followUp
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Consultation completed', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('completeModal')).hide();
+            document.getElementById('consultationNotes').value = '';
+            document.getElementById('prescription').value = '';
+            currentQueueId = null;
+            loadDashboardData();
+        } else {
+            showNotification(data.message, 'danger');
+        }
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function showNotification(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+    alertDiv.style.zIndex = '9999';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 3000);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardData();
+    initWebSocket();
+    
+    // Refresh every 30 seconds
+    setInterval(loadDashboardData, 30000);
+});
+</script>
+{% endblock %}

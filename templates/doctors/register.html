@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+
+{% block title %}Doctor Registration - SmartQueue{% endblock %}
+
+{% block content %}
+<div class="min-vh-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow-lg border-0">
+                    <div class="card-body p-5">
+                        <!-- Header -->
+                        <div class="text-center mb-4">
+                            <div class="bg-success bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="bi bi-person-badge text-white" style="font-size: 2.5rem;"></i>
+                            </div>
+                            <h2 class="fw-bold text-dark">Doctor Registration</h2>
+                            <p class="text-muted">Join SmartQueue Healthcare System</p>
+                        </div>
+
+                        <!-- Alert for messages -->
+                        <div id="alertContainer"></div>
+
+                        <!-- Registration Form -->
+                        <form id="registrationForm">
+                            <div class="row">
+                                <!-- Account Information -->
+                                <div class="col-12">
+                                    <h5 class="mb-3"><i class="bi bi-person-circle me-2"></i>Account Information</h5>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="username" class="form-label">Username *</label>
+                                    <input type="text" class="form-control" id="username" required>
+                                    <small id="usernameCheck" class="form-text"></small>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="password" class="form-label">Password *</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="password" required>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                            <i class="bi bi-eye" id="toggleIcon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">Email *</label>
+                                    <input type="email" class="form-control" id="email" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="phone" class="form-label">Phone Number *</label>
+                                    <input type="tel" class="form-control" id="phone" required>
+                                </div>
+
+                                <!-- Personal Information -->
+                                <div class="col-12 mt-3">
+                                    <h5 class="mb-3"><i class="bi bi-person-fill me-2"></i>Personal Information</h5>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="name" class="form-label">Full Name *</label>
+                                    <input type="text" class="form-control" id="name" placeholder="Dr. John Smith" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="specialization" class="form-label">Specialization *</label>
+                                    <input type="text" class="form-control" id="specialization" placeholder="Cardiology" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="department" class="form-label">Department *</label>
+                                    <select class="form-select" id="department" required>
+                                        <option value="">Select Department</option>
+                                        {% for dept in departments %}
+                                        <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="license" class="form-label">Medical License Number</label>
+                                    <input type="text" class="form-control" id="license" placeholder="MED12345">
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="qualification" class="form-label">Qualification</label>
+                                    <input type="text" class="form-control" id="qualification" placeholder="MBBS, MD">
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="experience" class="form-label">Years of Experience</label>
+                                    <input type="number" class="form-control" id="experience" min="0" value="0">
+                                </div>
+
+                                <!-- Terms -->
+                                <div class="col-12 mt-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="terms" required>
+                                        <label class="form-check-label" for="terms">
+                                            I agree to the terms and conditions and understand that my registration requires admin approval
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Submit Button -->
+                                <div class="col-12 mt-4">
+                                    <button type="submit" class="btn btn-success btn-lg w-100">
+                                        <i class="bi bi-person-plus-fill me-2"></i>Register as Doctor
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Links -->
+                        <hr class="my-4">
+                        <div class="text-center">
+                            <p class="mb-2">Already have an account?</p>
+                            <a href="{% url 'doctors:login' %}" class="btn btn-outline-primary me-2">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                            </a>
+                            <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-house me-2"></i>Home
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Check username availability
+let usernameTimeout;
+document.getElementById('username').addEventListener('input', function() {
+    clearTimeout(usernameTimeout);
+    const username = this.value.trim();
+    
+    if (username.length < 3) {
+        document.getElementById('usernameCheck').textContent = 'Username must be at least 3 characters';
+        document.getElementById('usernameCheck').className = 'form-text text-danger';
+        return;
+    }
+    
+    usernameTimeout = setTimeout(() => {
+        fetch(`/doctors/api/check-username/?username=${username}`)
+            .then(response => response.json())
+            .then(data => {
+                const checkEl = document.getElementById('usernameCheck');
+                if (data.available) {
+                    checkEl.textContent = '✓ Username available';
+                    checkEl.className = 'form-text text-success';
+                } else {
+                    checkEl.textContent = '✗ Username already taken';
+                    checkEl.className = 'form-text text-danger';
+                }
+            });
+    }, 500);
+});
+
+// Toggle password visibility
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('bi-eye');
+        toggleIcon.classList.add('bi-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('bi-eye-slash');
+        toggleIcon.classList.add('bi-eye');
+    }
+}
+
+// Form submission
+document.getElementById('registrationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        email: document.getElementById('email').value,
+        phone_number: document.getElementById('phone').value,
+        name: document.getElementById('name').value,
+        specialization: document.getElementById('specialization').value,
+        department_id: document.getElementById('department').value,
+        license_number: document.getElementById('license').value,
+        qualification: document.getElementById('qualification').value,
+        experience_years: parseInt(document.getElementById('experience').value) || 0
+    };
+    
+    // Validate
+    if (!formData.username || !formData.password || !formData.name || !formData.email || !formData.department_id) {
+        showAlert('Please fill all required fields', 'danger');
+        return;
+    }
+    
+    // Submit
+    fetch('/doctors/register/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            // Redirect after 2 seconds
+            setTimeout(() => {
+                window.location.href = '{% url "doctors:pending_approval" %}';
+            }, 2000);
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Registration failed. Please try again.', 'danger');
+    });
+});
+
+function showAlert(message, type) {
+    const alertContainer = document.getElementById('alertContainer');
+    alertContainer.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+
+<style>
+.card {
+    border-radius: 15px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.25rem rgba(40, 167, 69, 0.25);
+}
+</style>
+{% endblock %}
